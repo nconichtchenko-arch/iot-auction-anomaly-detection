@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 5s
+scrape_configs:
+  - job_name: 'agents'
+    static_configs:
+      - targets: ['iot_agent1:8000', 'iot_agent2:8000', 'iot_agent3:8000']
+  - job_name: 'coordinator'
+    static_configs:
+      - targets: ['iot_coordinator:8001']
