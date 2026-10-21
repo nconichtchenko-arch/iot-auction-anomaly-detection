@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: iot_postgres
+    environment:
+      POSTGRES_USER: iot
+      POSTGRES_PASSWORD: iot123
+      POSTGRES_DB: iot_anomaly
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - iot_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus
+    container_name: iot_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - iot_net
+
+  grafana:
+    image: grafana/grafana
+    container_name: iot_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - iot_net
+
+  agent1:
+    build: 
+      context: ./agent
+    container_name: iot_agent1
+    ports:
+      - "8101:8000"
+    environment:
+      - AGENT_ID=agent1
+      - COORDINATOR_URL=http://iot_coordinator:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iot_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  agent2:
+    build: 
+      context: ./agent
+    container_name: iot_agent2
+    ports:
+      - "8102:8000"
+    environment:
+      - AGENT_ID=agent2
+      - COORDINATOR_URL=http://iot_coordinator:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iot_net
+
+  agent3:
+    build: 
+      context: ./agent
+    container_name: iot_agent3
+    ports:
+      - "8103:8000"
+    environment:
+      - AGENT_ID=agent3
+      - COORDINATOR_URL=http://iot_coordinator:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iot_net
+
+  coordinator:
+    build:
+      context: ./coordinator
+    container_name: iot_coordinator
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iot_net
+
+networks:
+  iot_net:
+    driver: bridge
